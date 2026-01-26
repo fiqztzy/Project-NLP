@@ -5,8 +5,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import re
-import pickle
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
@@ -27,23 +25,13 @@ st.title("🎬 Sentiment Analysis Dashboard")
 st.write("Movie Review Sentiment Classification using Machine Learning")
 
 # -----------------------------------------
-# TEXT CLEANING FUNCTION
-# -----------------------------------------
-def clean_text(text):
-    text = text.lower()
-    text = re.sub(r"<.*?>", "", text)
-    text = re.sub(r"[^a-z\s]", "", text)
-    text = re.sub(r"\s+", " ", text)
-    return text
-
-# -----------------------------------------
 # LOAD & TRAIN MODEL (CACHE)
 # -----------------------------------------
 @st.cache_resource
 def train_model():
     df = pd.read_csv("IMDB_Dataset.csv")
 
-    df["review"] = df["review"].apply(clean_text)
+    # No cleaning needed since dataset is already clean
     df["sentiment"] = df["sentiment"].map({"positive":1,"negative":0})
 
     X = df["review"]
