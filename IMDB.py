@@ -1,10 +1,9 @@
-# =========================================
+# =====================================================
 # SENTIMENT ANALYSIS DASHBOARD (STREAMLIT)
-# =========================================
+# =====================================================
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
@@ -13,132 +12,163 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-# -----------------------------------------
-# PAGE CONFIG
-# -----------------------------------------
+# =====================================================
+# PAGE CONFIGURATION
+# =====================================================
 st.set_page_config(
     page_title="Sentiment Analysis Dashboard",
     layout="centered"
 )
 
-st.title("🎬 Sentiment Analysis Dashboard")
-st.write("Movie Review Sentiment Classification using Machine Learning")
+st.title("Sentiment Analysis Dashboard")
+st.write("Customer & Movie Review Sentiment Classification")
 
-# -----------------------------------------
-# LOAD & TRAIN MODEL (CACHE)
-# -----------------------------------------
+# =====================================================
+# LOAD DATA & TRAIN MODEL (CACHED)
+# =====================================================
 @st.cache_resource
-def train_model():
+def load_and_train_model():
+    # Load dataset
     df = pd.read_csv("IMDB_Dataset.csv")
 
-    # No cleaning needed since dataset is already clean
-    df["sentiment"] = df["sentiment"].map({"positive":1,"negative":0})
+    # Encode sentiment labels
+    df["sentiment"] = df["sentiment"].map({
+        "positive": 1,
+        "negative": 0
+    })
 
     X = df["review"]
     y = df["sentiment"]
 
+    # Split data
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y,
+        test_size=0.2,
+        random_state=42
     )
 
+    # Build ML pipeline
     model = Pipeline([
-        ("tfidf", TfidfVectorizer(max_features=5000)),
-        ("clf", LogisticRegression(max_iter=200))
+        ("tfidf", TfidfVectorizer(
+            max_features=5000,
+            stop_words="english"
+        )),
+        ("classifier", LogisticRegression(max_iter=200))
     ])
 
+    # Train model
     model.fit(X_train, y_train)
 
-    predictions = model.predict(X_test)
-    acc = accuracy_score(y_test, predictions)
-    cm = confusion_matrix(y_test, predictions)
+    # Evaluate model
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
 
-    return model, acc, cm
+    return model, accuracy, cm
 
-model, accuracy, cm = train_model()
 
-# -----------------------------------------
+model, accuracy, cm = load_and_train_model()
+
+# =====================================================
 # MODEL PERFORMANCE
-# -----------------------------------------
-st.subheader("📊 Model Performance")
-st.write(f"Accuracy: **{accuracy*100:.2f}%**")
+# =====================================================
+st.subheader("Model Performance")
 
-fig_cm, ax_cm = plt.subplots()
-ax_cm.imshow(cm)
-ax_cm.set_title("Confusion Matrix")
-ax_cm.set_xlabel("Predicted")
-ax_cm.set_ylabel("Actual")
-ax_cm.set_xticks([0,1])
-ax_cm.set_yticks([0,1])
-ax_cm.set_xticklabels(["Negative","Positive"])
-ax_cm.set_yticklabels(["Negative","Positive"])
+st.write(f"Accuracy: **{accuracy * 100:.2f}%**")
+
+fig_cm, ax = plt.subplots()
+ax.imshow(cm)
+ax.set_title("Confusion Matrix")
+ax.set_xlabel("Predicted Label")
+ax.set_ylabel("Actual Label")
+ax.set_xticks([0, 1])
+ax.set_yticks([0, 1])
+ax.set_xticklabels(["Negative", "Positive"])
+ax.set_yticklabels(["Negative", "Positive"])
 
 for i in range(2):
     for j in range(2):
-        ax_cm.text(j, i, cm[i,j], ha="center", va="center")
+        ax.text(j, i, cm[i, j], ha="center", va="center")
 
 st.pyplot(fig_cm)
 
-# -----------------------------------------
+# =====================================================
 # SINGLE REVIEW PREDICTION
-# -----------------------------------------
-st.subheader("🔍 Predict Single Review")
+# =====================================================
+st.subheader("Single Review Prediction")
 
-user_text = st.text_area("Enter your movie review:")
+user_input = st.text_area("Enter a review text:")
 
-if st.button("Predict"):
-    if user_text.strip() == "":
-        st.warning("Please enter text.")
+if st.button("Predict Sentiment"):
+    if user_input.strip() == "":
+        st.warning("Please enter a review text.")
     else:
-        result = model.predict([user_text])[0]
+        prediction = model.predict([user_input])[0]
 
-        if result == 1:
-            st.success("Positive Review 😊")
+        if prediction == 1:
+            st.success("Prediction Result: Positive Review")
         else:
-            st.error("Negative Review 😠")
+            st.error("Prediction Result: Negative Review")
 
-# -----------------------------------------
-# CSV BATCH PREDICTION
-# -----------------------------------------
-st.subheader("📁 Upload CSV File")
+# =====================================================
+# BATCH PREDICTION (CSV UPLOAD)
+# =====================================================
+st.subheader("Batch Prediction (CSV File)")
 
-file = st.file_uploader("CSV file must contain column name: review")
+uploaded_file = st.file_uploader(
+    "Upload CSV file (must contain column: review)",
+    type=["csv"]
+)
 
-if file:
-    data = pd.read_csv(file)
+if uploaded_file:
+    data = pd.read_csv(uploaded_file)
 
     if "review" not in data.columns:
-        st.error("Column 'review' not found.")
+        st.error("CSV file must contain a column named 'review'.")
     else:
+        # Predict sentiments
         data["prediction"] = model.predict(data["review"])
-        data["sentiment"] = data["prediction"].map({1:"Positive",0:"Negative"})
+        data["sentiment"] = data["prediction"].map({
+            1: "Positive",
+            0: "Negative"
+        })
 
-        st.write(data.head())
+        st.write("Preview of prediction results:")
+        st.dataframe(data.head())
 
-        counts = data["sentiment"].value_counts()
+        sentiment_counts = data["sentiment"].value_counts()
 
-        # Pie Chart
+        # Pie chart
         fig1, ax1 = plt.subplots()
-        ax1.pie(counts, labels=counts.index, autopct="%1.1f%%")
+        ax1.pie(
+            sentiment_counts,
+            labels=sentiment_counts.index,
+            autopct="%1.1f%%"
+        )
         ax1.set_title("Sentiment Distribution")
         st.pyplot(fig1)
 
-        # Bar Chart
+        # Bar chart
         fig2, ax2 = plt.subplots()
-        ax2.bar(counts.index, counts.values)
+        ax2.bar(
+            sentiment_counts.index,
+            sentiment_counts.values
+        )
         ax2.set_xlabel("Sentiment")
-        ax2.set_ylabel("Count")
+        ax2.set_ylabel("Number of Reviews")
         ax2.set_title("Sentiment Count")
         st.pyplot(fig2)
 
+        # Download result
         st.download_button(
-            "Download Result CSV",
-            data.to_csv(index=False),
-            file_name="prediction_result.csv",
+            label="Download Prediction Result",
+            data=data.to_csv(index=False),
+            file_name="sentiment_prediction.csv",
             mime="text/csv"
         )
 
-# -----------------------------------------
+# =====================================================
 # FOOTER
-# -----------------------------------------
+# =====================================================
 st.markdown("---")
-st.write("Developed for NLP Sentiment Analysis Project")
+st.write("Sentiment Analysis Dashboard | NLP Machine Learning Project")
