@@ -167,8 +167,4 @@ if uploaded_file:
             mime="text/csv"
         )
 
-# =====================================================
-# FOOTER
-# =====================================================
-st.markdown("---")
-st.write("Sentiment Analysis Dashboard | NLP Machine Learning Project")
+
