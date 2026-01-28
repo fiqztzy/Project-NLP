@@ -76,7 +76,7 @@ st.subheader("Model Performance")
 
 st.write(f"Accuracy: **{accuracy * 100:.2f}%**")
 
-fig_cm, ax = plt.subplots(figsize=(4, 4))
+fig_cm, ax = plt.subplots(figsize=(3, 3))
 ax.imshow(cm)
 ax.set_title("Confusion Matrix")
 ax.set_xlabel("Predicted Label")
